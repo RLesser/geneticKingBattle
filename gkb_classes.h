@@ -4,13 +4,15 @@
 #include <random> // for mt19937, uniform_int_distribution
 #include <chrono> // for high_resolution_clock
 #include <iostream>
+#include "Tournament.h"
 
 using namespace std;
 
-int	CASTLE_NUM = 10;
-int TROOP_NUM = 100;
+int KING_NUM = 20; // K in complexity analysis
+int	CASTLE_NUM = 10; // C in complexity analysis
+int TROOP_NUM = 100; // T in complexity analysis
 int MAX_MUTATION_SWAP = 10;
-int PROPAGATION_LIST[] = {6,2,1,1,0,0,0,0,0,0};
+int PROPAGATION_LIST[] = {0,0,0,0,0,0,1,1,2,6};
 
 typedef uniform_int_distribution<std::mt19937::result_type> DISTR;
 
@@ -19,10 +21,11 @@ DISTR castleDist(0,CASTLE_NUM-1);
 class King {
 private:
 	vector<int> troopPlacement;
+	int score;
 
 public:
-	King(mt19937 rng)
-		: troopPlacement(CASTLE_NUM, 0) {
+	King(mt19937 &rng)
+		: troopPlacement(CASTLE_NUM, 0), score(0) {
 		for (int i = 0; i < TROOP_NUM; ++i) {
 			troopPlacement[castleDist(rng)]++;
 		}
@@ -37,14 +40,87 @@ public:
 		cout << "]" << endl;
 	}
 
+	size_t getCastleTroops(size_t idx) {
+		if (idx >= CASTLE_NUM) {
+			cerr << "castle index too large" << endl;
+			exit(1);
+		}
+		return  troopPlacement[idx];
+	}
+
+	int getScore() {
+		return score;
+	}
+
 	//~King();
 };
 
 class World {
 private:
+	//TODO: probably better to use pointer to king, but this works for now 
 	vector<King> kingList;
+	int year;
+
+
+	size_t kingBattle(size_t kingAIdx, size_t kingBIdx) {
+		int pointsA = 0;
+		int pointsB = 0;
+		for (int i = 0; i < CASTLE_NUM; i++) {
+			//cout << A.getCastleTroops(i) << " " << B.getCastleTroops(i) << endl;
+			if (kingList[kingAIdx].getCastleTroops(i) > 
+				kingList[kingBIdx].getCastleTroops(i)) {
+				//cout << "A wins castle " << i << endl;
+				pointsA += (i+1);
+			} else if (kingList[kingAIdx].getCastleTroops(i) < 
+					   kingList[kingBIdx].getCastleTroops(i)) {
+				//cout << "B wins castle " << i << endl;
+				pointsB += (i+1);
+			}
+		}
+		if (pointsA > pointsB) {
+			return kingAIdx;
+		} else if (pointsA < pointsB) {
+			return kingBIdx;
+		} else { 
+			//king_num if no winner this round
+			//be sure to account for this!!!
+			return KING_NUM;
+		}
+	}
+
+	void roundRobinBattle() {
+		for (int i = 0; i < KING_NUM; i++) {
+			if (kingList[i].getScore() != 0) {
+				cerr << "King about to battle has nonzero score" << endl;
+				exit(1);
+			}
+		}
+	}
+	
 
 public:
+
+	World(mt19937 &rng) {
+		year = 0;
+		for (int i = 0; i < KING_NUM; i++) {
+			kingList.push_back(King(rng));
+		}
+	}
+
+	void advanceYear() {
+		year++;
+		//sort(kingList.begin(), kingList.end(), BattleComp_Less());
+
+	}
+
+	void printWorld() {
+		cout << "Year: " << year << endl;
+		for (int i = 0; i < KING_NUM; i++) {
+			cout << i << ": ";
+			kingList[i].printTroops();
+		}
+		cout << endl;
+	}
 	
 };
 
