@@ -8,7 +8,7 @@
 
 using namespace std;
 
-int KING_NUM = 20; // K in complexity analysis
+int KING_NUM = 10; // K in complexity analysis
 int	CASTLE_NUM = 10; // C in complexity analysis
 int TROOP_NUM = 100; // T in complexity analysis
 int MAX_MUTATION_SWAP = 10;
@@ -33,6 +33,7 @@ public:
 
 	//castlenum must be at least 1
 	void printTroops() {
+		cout << "S:" << score << " ";
 		cout << "[" << troopPlacement[0];
 		for (int i = 1; i < CASTLE_NUM; i++) {
 			cout << "," << troopPlacement[i];
@@ -46,6 +47,10 @@ public:
 			exit(1);
 		}
 		return  troopPlacement[idx];
+	}
+
+	void victory() {
+		score++;
 	}
 
 	int getScore() {
@@ -95,6 +100,12 @@ private:
 				exit(1);
 			}
 		}
+		RoundRobin RR(KING_NUM);
+		pair<size_t, size_t> currentMatch;
+		while (RR.getMatch(currentMatch)) {
+			size_t winnerIdx = kingBattle(currentMatch.first, currentMatch.second);
+			kingList[winnerIdx].victory();
+		}
 	}
 	
 
@@ -109,6 +120,7 @@ public:
 
 	void advanceYear() {
 		year++;
+		roundRobinBattle();
 		//sort(kingList.begin(), kingList.end(), BattleComp_Less());
 
 	}
