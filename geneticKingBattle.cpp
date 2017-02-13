@@ -9,9 +9,16 @@ int main() {
 
     World world(rng);
 
-    world.printWorld();
-    world.advanceYear();
-    world.printWorld();
+    //world.printWorld();
+    cout << "year";
+	for (int i = 0; i < CASTLE_NUM; i++) {
+		cout << "," << i;
+	}
+	cout << endl;
+    for (int i = 0; i < YEAR_NUM; ++i) {
+    	world.advanceYear();
+    	world.printWorld(true);
+    }
 
 	// cout << r.randNum() << endl;
 	// cout << r.randNum() << endl;

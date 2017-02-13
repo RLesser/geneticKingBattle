@@ -11,12 +11,17 @@ using namespace std;
 int KING_NUM = 10; // K in complexity analysis
 int	CASTLE_NUM = 10; // C in complexity analysis
 int TROOP_NUM = 100; // T in complexity analysis
-int MAX_MUTATION_SWAP = 10;
-int PROPAGATION_LIST[] = {0,0,0,0,0,0,1,1,2,6};
+int YEAR_NUM = 1000; // Y in complexity analysis
+int MAX_MUTATION_SWAP = 10; //max num to be swapped in mutation
+int PROPAGATION_LIST[] = {0,0,1,1,1,1,1,1,2,2}; //children for each king
 
 typedef uniform_int_distribution<std::mt19937::result_type> DISTR;
 
+//Distribution of castles
 DISTR castleDist(0,CASTLE_NUM-1);
+//Distribution of mutations
+DISTR mutationSizeDist(1,MAX_MUTATION_SWAP);
+
 
 class King {
 private:
@@ -30,6 +35,9 @@ public:
 			troopPlacement[castleDist(rng)]++;
 		}
 	}
+
+	King(vector<int> troops_in) 
+		: troopPlacement(troops_in), score(0) {}
 
 	//castlenum must be at least 1
 	void printTroops() {
@@ -49,6 +57,38 @@ public:
 		return  troopPlacement[idx];
 	}
 
+	// generates a child of the current king
+	// A child is different than it's parent based on the following process:
+	// A number of troops between 1 and MAX_MUTATION_SWAP is moved from one
+	// castle to another castle.
+	// If the castle losing troops would be < 0 or the castle gaining troops
+	// would be > 0, then the max viable swap is executed.
+	vector<int> generateChild(mt19937 &rng) {
+		int mutationSize = mutationSizeDist(rng);
+		int donorCastle = castleDist(rng);
+		int recipCastle = castleDist(rng);
+		// if the mutation would be larger than the donor castle's size...
+		if (mutationSize > troopPlacement[donorCastle]) {
+			//set mutation size to the max troops that can be taken
+			mutationSize = troopPlacement[donorCastle];
+		}
+		// also, if the mutation would be larger than the recipiant castle's
+		// remaining spots, (and remaining spots < previous constraint)...
+		if (mutationSize > (TROOP_NUM - troopPlacement[recipCastle])) {
+			mutationSize = (TROOP_NUM - troopPlacement[recipCastle]);
+		}
+
+		vector<int> childVec(troopPlacement.begin(), troopPlacement.end());
+		childVec[donorCastle] -= mutationSize;
+		childVec[recipCastle] += mutationSize;
+
+		return childVec;
+	}
+
+	bool operator<(const King &rhs) const {
+		return score < rhs.score;
+	}
+
 	void victory() {
 		score++;
 	}
@@ -60,11 +100,24 @@ public:
 	//~King();
 };
 
+
+
+
+
+
+
+
+
+
+
+
+
 class World {
 private:
 	//TODO: probably better to use pointer to king, but this works for now 
 	vector<King> kingList;
 	int year;
+	mt19937 &rng;
 
 
 	size_t kingBattle(size_t kingAIdx, size_t kingBIdx) {
@@ -106,12 +159,23 @@ private:
 			size_t winnerIdx = kingBattle(currentMatch.first, currentMatch.second);
 			kingList[winnerIdx].victory();
 		}
+		sort(kingList.begin(), kingList.end());
+	}
+
+	void nextGeneration() {
+		vector<King> newGen;
+		for (int i = 0; i < KING_NUM; i++) {
+			for (int j = 0; j < PROPAGATION_LIST[i]; j++) {
+				newGen.push_back(King(kingList[i].generateChild(rng)));
+			}
+		}
+		kingList = newGen;
 	}
 	
 
 public:
 
-	World(mt19937 &rng) {
+	World(mt19937 &rng_in) : rng(rng_in) {
 		year = 0;
 		for (int i = 0; i < KING_NUM; i++) {
 			kingList.push_back(King(rng));
@@ -121,17 +185,42 @@ public:
 	void advanceYear() {
 		year++;
 		roundRobinBattle();
+		nextGeneration();
 		//sort(kingList.begin(), kingList.end(), BattleComp_Less());
-
 	}
 
-	void printWorld() {
-		cout << "Year: " << year << endl;
-		for (int i = 0; i < KING_NUM; i++) {
-			cout << i << ": ";
-			kingList[i].printTroops();
+	void printWorld(bool avg) {
+		if (!avg) {
+			cout << "Year: " << year << endl;
+			for (int i = 0; i < KING_NUM; i++) {
+				cout << i << ": ";
+				kingList[i].printTroops();
+			}
+		} else {
+			vector<double> avgs = getWorldAverage();
+			cout << year << ",";
+			for (int i = 0; i < CASTLE_NUM; i++) {
+				cout << avgs[i];
+				if (i != CASTLE_NUM-1) {
+					cout << ",";
+				}
+			}
 		}
 		cout << endl;
+	}
+
+	vector<double> getWorldAverage() {
+		vector<int> sums(CASTLE_NUM, 0);
+		vector<double> avgs(CASTLE_NUM, 0);
+		//cout << "TESTeee" << endl;
+		for (int i = 0; i < CASTLE_NUM; i++) {
+			//cout << i << endl;
+			for(int j = 0; j < KING_NUM; j++) {
+				sums[i] += kingList[j].getCastleTroops(i);
+			}
+			avgs[i] = sums[i] / (double)KING_NUM;
+		}
+		return avgs;
 	}
 	
 };
